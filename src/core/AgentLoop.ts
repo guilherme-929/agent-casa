@@ -1,5 +1,6 @@
 import { ILlmProvider, ChatMessage, ProviderResponse, ToolCall } from '../types';
 import { ToolRegistry } from '../tools/BaseTool';
+import { getMestreKamiPrompt } from './SystemPrompts';
 
 export class AgentLoop {
     private maxIterations = 5;
@@ -12,13 +13,17 @@ export class AgentLoop {
     public async run(messages: ChatMessage[], skillContent?: string): Promise<string> {
         let currentMessages = [...messages];
         
+        let systemPrompt = getMestreKamiPrompt();
+
         // Inject skill content if present
         if (skillContent) {
-            currentMessages.unshift({
-                role: 'system',
-                content: `Specialized Skill Instructions:\n${skillContent}`
-            });
+            systemPrompt += `\n\n--- INSTRUÇÕES DA SKILL ESPECIALIZADA ATUAL ---\n${skillContent}`;
         }
+        
+        currentMessages.unshift({
+            role: 'system',
+            content: systemPrompt
+        });
 
         let iterations = 0;
         let finalResponse = "I'm sorry, I couldn't reach a conclusion after several attempts.";

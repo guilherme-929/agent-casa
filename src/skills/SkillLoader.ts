@@ -24,16 +24,23 @@ export class SkillLoader {
             return [];
         }
 
-        const skillDirs = fs.readdirSync(this.skillsPath);
+        const items = fs.readdirSync(this.skillsPath);
         const skills: Skill[] = [];
 
-        for (const dir of skillDirs) {
-            const skillFilePath = path.join(this.skillsPath, dir, 'SKILL.md');
-            if (fs.existsSync(skillFilePath)) {
-                const skill = this.parseSkillFile(skillFilePath, dir);
-                if (skill) {
-                    skills.push(skill);
+        for (const item of items) {
+            const itemPath = path.join(this.skillsPath, item);
+            const stat = fs.statSync(itemPath);
+
+            if (stat.isDirectory()) {
+                const skillFilePath = path.join(itemPath, 'SKILL.md');
+                if (fs.existsSync(skillFilePath)) {
+                    const skill = this.parseSkillFile(skillFilePath, item);
+                    if (skill) skills.push(skill);
                 }
+            } else if (stat.isFile() && item.endsWith('.md')) {
+                const skillName = item.replace('.md', '');
+                const skill = this.parseSkillFile(itemPath, skillName);
+                if (skill) skills.push(skill);
             }
         }
 
@@ -45,19 +52,31 @@ export class SkillLoader {
             const fileContent = fs.readFileSync(filePath, 'utf8');
             const match = fileContent.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
 
-            if (!match) return null;
+            let metadata: SkillMetadata;
+            let contentStr: string;
 
-            const frontmatter = yaml.load(match[1]) as any;
-            const content = match[2];
-
-            return {
-                metadata: {
+            if (match) {
+                const frontmatter = yaml.load(match[1]) as any || {};
+                metadata = {
                     name: frontmatter.name || dirName,
-                    description: frontmatter.description || '',
+                    description: frontmatter.description || 'Nenhuma descrição.',
                     version: frontmatter.version,
                     id: dirName
-                },
-                content: content,
+                };
+                contentStr = match[2];
+            } else {
+                // Fallback para arquivos sem frontmatter YAML
+                metadata = {
+                    name: dirName,
+                    description: 'Skill carregada diretamente do markdown sem metadata.',
+                    id: dirName
+                };
+                contentStr = fileContent;
+            }
+
+            return {
+                metadata,
+                content: contentStr,
                 path: filePath
             };
         } catch (error) {
