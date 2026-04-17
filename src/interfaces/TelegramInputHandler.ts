@@ -191,6 +191,47 @@ export class TelegramInputHandler {
                 await ctx.reply(`⚠️ Falha ao processar o documento: ${error.message}`);
             }
         });
+
+        // Handler para botões de concluir tarefa
+        this.bot.callbackQuery(/done:(.+)/, async (ctx) => {
+            const taskId = ctx.match[1];
+            const tasksPath = path.join(process.cwd(), 'tasks.json');
+
+            if (!fs.existsSync(tasksPath)) {
+                await ctx.answerCallbackQuery({ text: 'Erro: Lista de tarefas não encontrada.' });
+                return;
+            }
+
+            try {
+                const content = fs.readFileSync(tasksPath, 'utf-8');
+                let tasks: any[] = JSON.parse(content);
+                const taskIndex = tasks.findIndex(t => t.id === taskId);
+
+                if (taskIndex === -1) {
+                    await ctx.answerCallbackQuery({ text: 'Erro: Tarefa não encontrada.' });
+                    return;
+                }
+
+                if (tasks[taskIndex].status === 'Concluída') {
+                    await ctx.answerCallbackQuery({ text: 'Esta tarefa já foi concluída.' });
+                    return;
+                }
+
+                tasks[taskIndex].status = 'Concluída';
+                fs.writeFileSync(tasksPath, JSON.stringify(tasks, null, 2), 'utf-8');
+
+                await ctx.answerCallbackQuery({ text: 'Tarefa concluída com sucesso!' });
+                
+                // Editar a mensagem original para remover o botão e indicar conclusão
+                await ctx.editMessageText(`✅ **CONCLUÍDA!**\n\n📌 **${tasks[taskIndex].title}**\nParabéns Mestre, você finalizou essa tarefa!`, {
+                    parse_mode: 'Markdown'
+                });
+
+            } catch (error) {
+                console.error('[TelegramInputHandler] Error updating task via callback:', error);
+                await ctx.answerCallbackQuery({ text: 'Falha ao concluir tarefa.' });
+            }
+        });
     }
 
     private async handleInput(ctx: Context, input: ProcessedInput): Promise<void> {

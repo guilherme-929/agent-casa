@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { Bot } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -12,7 +12,8 @@ interface Task {
     description: string;
     priority: string;
     status: string;
-    notified?: boolean;
+    notificationCount?: number;
+    lastAlertAt?: string;
 }
 
 export class NotificationService {
@@ -25,7 +26,6 @@ export class NotificationService {
         this.bot = bot;
         this.tasksPath = path.join(process.cwd(), 'tasks.json');
         
-        // Grab the first allowed user ID as the target for proactive alerts
         const allowedIds = (process.env.TELEGRAM_ALLOWED_USER_IDS || '').split(',');
         this.targetUserId = allowedIds[0];
     }
@@ -33,7 +33,6 @@ export class NotificationService {
     public start(): void {
         console.log('[NotificationService] Starting alert monitor...');
         setInterval(() => this.checkTasks(), this.checkInterval);
-        // Initial check
         this.checkTasks();
     }
 
@@ -47,16 +46,28 @@ export class NotificationService {
             let hasChanges = false;
 
             for (const task of tasks) {
-                if (task.status === 'Pendente' && !task.notified) {
+                if (task.status === 'Pendente') {
                     const taskDate = new Date(task.datetime);
+                    const count = task.notificationCount || 0;
                     
-                    // If it's time (or passed)
-                    if (taskDate <= now) {
-                        await this.sendAlert(task);
-                        task.notified = true;
-                        // Opcional: Podíamos mudar para 'Notificado' ou algo assim, 
-                        // mas manter 'Pendente' e usar a flag 'notified' é mais seguro.
+                    // Lógica 1º Alerta (Horário Chegou)
+                    if (count === 0 && taskDate <= now) {
+                        await this.sendAlert(task, 1);
+                        task.notificationCount = 1;
+                        task.lastAlertAt = now.toISOString();
                         hasChanges = true;
+                    } 
+                    // Lógica 2º Alerta (Reforço após 2 minutos)
+                    else if (count === 1 && task.lastAlertAt) {
+                        const lastAlert = new Date(task.lastAlertAt);
+                        const diffMinutes = (now.getTime() - lastAlert.getTime()) / 60000;
+
+                        if (diffMinutes >= 2) {
+                            await this.sendAlert(task, 2);
+                            task.notificationCount = 2;
+                            task.lastAlertAt = now.toISOString();
+                            hasChanges = true;
+                        }
                     }
                 }
             }
@@ -69,23 +80,29 @@ export class NotificationService {
         }
     }
 
-    private async sendAlert(task: Task): Promise<void> {
-        if (!this.targetUserId) {
-            console.warn('[NotificationService] No target user ID found for alerts');
-            return;
-        }
+    private async sendAlert(task: Task, alertNumber: number): Promise<void> {
+        if (!this.targetUserId) return;
 
-        const message = `🔔 **ALERTA DO GOKU!** 🔔\n\n` +
-            `Mestre, está na hora do seu compromisso:\n\n` +
+        const header = alertNumber === 1 
+            ? '🔔 **HORA DO COMPROMISSO!** 🔔' 
+            : '⚠️ **REFORÇO DE ALERTA!** ⚠️';
+
+        const message = `${header}\n\nMestre, você tem uma tarefa agendada:\n\n` +
             `📌 **${task.title}**\n` +
             `⏰ Horário: ${new Date(task.datetime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n` +
             `📝 Descrição: ${task.description}\n` +
             `🔥 Prioridade: ${task.priority}\n\n` +
-            `_Não se atrase!_`;
+            (alertNumber === 1 ? '_Vou te avisar novamente em 2 minutos se você não concluir!_' : '_Este é o último aviso para esta tarefa._');
+
+        const keyboard = new InlineKeyboard()
+            .text('✅ Concluir Tarefa', `done:${task.id}`);
 
         try {
-            await this.bot.api.sendMessage(this.targetUserId, message, { parse_mode: 'Markdown' });
-            console.log(`[NotificationService] Alert sent for task: ${task.title}`);
+            await this.bot.api.sendMessage(this.targetUserId, message, { 
+                parse_mode: 'Markdown',
+                reply_markup: keyboard
+            });
+            console.log(`[NotificationService] Alert #${alertNumber} sent for task: ${task.title}`);
         } catch (error) {
             console.error('[NotificationService] Failed to send Telegram alert:', error);
         }
