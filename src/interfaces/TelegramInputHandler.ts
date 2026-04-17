@@ -30,12 +30,8 @@ export class TelegramInputHandler {
     private allowedUserIds: string[];
     private tmpDir: string;
 
-    constructor() {
-        if (!process.env.TELEGRAM_BOT_TOKEN) {
-            throw new Error('TELEGRAM_BOT_TOKEN is not defined');
-        }
-
-        this.bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
+    constructor(bot: Bot) {
+        this.bot = bot;
         this.controller = new AgentController();
         this.outputHandler = new TelegramOutputHandler(this.bot);
         this.audioService = new AudioService();

@@ -30,46 +30,34 @@ export class AgentController {
         return process.env.DEFAULT_PROVIDER || 'groq';
     }
 
-    private isSimpleGreeting(text: string): boolean {
-        const greetings = ['oi', 'ola', 'olá', 'hello', 'hi', 'bom dia', 'boa tarde', 'boa noite', 'opa', 'eai', 'e aí'];
-        const normalized = text.toLowerCase().trim().replace(/[?!.]/g, '');
-        return greetings.includes(normalized) || text.length < 5;
-    }
-
     public async processMessage(userId: string, username: string, text: string): Promise<string> {
         console.log(`[AgentController] Processing message from ${username} (${userId})`);
 
         const provider = this.getDefaultProvider();
-        const isGreeting = this.isSimpleGreeting(text);
         
         // 1. Get/Set context
-        // If it's a greeting, we only need a tiny slice of history
-        const historyLimit = isGreeting ? 3 : 20;
+        const historyLimit = 10;
         const { conversation, history } = await this.memoryManager.getContext(userId, provider);
         const slicedHistory = history.slice(-historyLimit);
 
-        let skill = null;
-        if (!isGreeting) {
-            // 2. Load Skills
-            const availableSkills = this.skillLoader.loadAll();
+        // 2. Load Skills
+        const availableSkills = this.skillLoader.loadAll();
 
-            // 3. Select Provider for Routing
-            const routerProvider = ProviderFactory.create(provider);
-            const skillRouter = new SkillRouter(routerProvider);
+        // 3. Select Provider for Routing
+        const routerProvider = ProviderFactory.create(provider);
+        const skillRouter = new SkillRouter(routerProvider);
 
-            // 4. Identify Skill
-            skill = await skillRouter.route(text, availableSkills);
-            if (skill) {
-                console.log(`[AgentController] Skill identified: ${skill.metadata.name}`);
-            }
+        // 4. Identify Skill
+        let skill = await skillRouter.route(text, availableSkills);
+        if (skill) {
+            console.log(`[AgentController] Skill identified: ${skill.metadata.name}`);
         } else {
-            console.log(`[AgentController] Simple greeting detected. Bypassing skill routing.`);
+            console.log(`[AgentController] No specific skill identified. Proceeding as Mestre Kami.`);
         }
 
         // 5. Initialize Main Provider for Reasoning
         const mainProvider = ProviderFactory.create(provider);
-        const loopToolRegistry = isGreeting ? new ToolRegistry() : this.toolRegistry;
-        const agentLoop = new AgentLoop(mainProvider, loopToolRegistry);
+        const agentLoop = new AgentLoop(mainProvider, this.toolRegistry);
 
         // 6. Prepare Messages
         const messages: ChatMessage[] = [

@@ -1,8 +1,1 @@
-[{
-  "id": "task-2026-04-16-18-21",
-  "title": "Revisar documento X",
-  "datetime": "2026-04-16T18:21:00",
-  "description": "Faça a revisão final do relatório de projeto e envie para o time.",
-  "priority": "Média",
-  "status": "Pendente"
-}]
+[{"id":"task-2026-04-16-18-21","title":"Revisar documento X","datetime":"2026-04-16T18:21:00","description":"Faça a revisão final do relatório de projeto e envie para o time.","priority":"Média","status":"Concluída"},{"id":"task-2026-04-16-20-00","title":"Verificar servidor da Fricaire","datetime":"2026-04-16T20:00:00","description":"Checar logs, uptime e performance.","priority":"Alta","status":"Concluída"},{"id":"task-2026-04-17-10-00","title":"Pedreiro concertar banheiro","datetime":"2026-04-17T10:00:00","description":"O pedreiro vai vir concertar o banheiro.","priority":"Alta","status":"Pendente"}]

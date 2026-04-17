@@ -3,7 +3,7 @@ import { ToolRegistry } from '../tools/BaseTool';
 import { getMestreKamiPrompt } from './SystemPrompts';
 
 export class AgentLoop {
-    private maxIterations = 5;
+    private maxIterations = 10;
 
     constructor(
         private provider: ILlmProvider,
@@ -86,6 +86,11 @@ export class AgentLoop {
 
         if (iterations >= this.maxIterations) {
             console.warn('[AgentLoop] Max iterations reached.');
+            // Fallback: if we have any assistant content from the last iteration, use it instead of the error message
+            const lastAssistantMessage = currentMessages.reverse().find(m => m.role === 'assistant' && m.content.trim().length > 0);
+            if (lastAssistantMessage) {
+                return lastAssistantMessage.content;
+            }
         }
 
         return finalResponse;
