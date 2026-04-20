@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Casa Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: #161b22;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .header h1 span {
+            color: #58a6ff;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #7ee787;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #7ee787;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 70px);
+        }
+        
+        .agents-panel {
+            background: #161b22;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #30363d;
+            overflow-y: auto;
+        }
+        
+        .agents-panel h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            color: #8b949e;
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .agent-card {
+            background: #21262d;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid #30363d;
+            transition: all 0.2s;
+        }
+        
+        .agent-card:hover {
+            border-color: #58a6ff;
+        }
+        
+        .agent-card.active {
+            border-color: #58a6ff;
+            background: #1f2a37;
+        }
+        
+        .agent-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .agent-card p {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+        
+        .events-panel {
+            background: #161b22;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #30363d;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .events-panel h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            color: #8b949e;
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .event {
+            background: #21262d;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid #58a6ff;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .event.message {
+            border-left-color: #58a6ff;
+        }
+        
+        .event.agent_selected {
+            border-left-color: #f0883e;
+        }
+        
+        .event.response {
+            border-left-color: #7ee787;
+        }
+        
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .event-user {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .event-agent {
+            background: #388bfd26;
+            color: #58a6ff;
+            padding: 0.125rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+        
+        .event-time {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+        
+        .event-content {
+            font-size: 0.875rem;
+            color: #c9d1d9;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #8b949e;
+            padding: 2rem;
+        }
+        
+        .refresh-btn {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        
+        .refresh-btn:hover {
+            background: #2ea043;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1><span>🤖</span> Agent Casa Dashboard</h1>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>Online</span>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="agents-panel">
+            <h2>Agentes Disponíveis</h2>
+            <div id="agents-list"></div>
+        </div>
+        
+        <div class="events-panel">
+            <h2>Atividade em Tempo Real</h2>
+            <button class="refresh-btn" onclick="loadEvents()">↻ Atualizar</button>
+            <div id="events-list"></div>
+        </div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        async function loadAgents() {
+            try {
+                const res = await fetch('/api/agents');
+                const agents = await res.json();
+                
+                const container = document.getElementById('agents-list');
+                if (agents.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Nenhum agente encontrado</div>';
+                    return;
+                }
+                
+                container.innerHTML = agents.map(agent => `
+                    <div class="agent-card">
+                        <h3>${agent.name}</h3>
+                        <p>${agent.description || 'Sem descrição'}</p>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading agents:', e);
+            }
+        }
+        
+        async function loadEvents() {
+            try {
+                const res = await fetch('/api/events');
+                const events = await res.json();
+                
+                const container = document.getElementById('events-list');
+                if (events.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Nenhuma atividade ainda</div>';
+                    return;
+                }
+                
+                container.innerHTML = events.map(event => `
+                    <div class="event ${event.type}">
+                        <div class="event-header">
+                            <span class="event-user">@${event.username}</span>
+                            ${event.agent ? `<span class="event-agent">${event.agent}</span>` : ''}
+                            <span class="event-time">${formatTime(event.timestamp)}</span>
+                        </div>
+                        <div class="event-content">${event.content}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading events:', e);
+            }
+        }
+        
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        socket.on('new_event', (event) => {
+            const container = document.getElementById('events-list');
+            const empty = container.querySelector('.empty-state');
+            if (empty) empty.remove();
+            
+            const html = `
+                <div class="event ${event.type}">
+                    <div class="event-header">
+                        <span class="event-user">@${event.username}</span>
+                        ${event.agent ? `<span class="event-agent">${event.agent}</span>` : ''}
+                        <span class="event-time">${formatTime(event.timestamp)}</span>
+                    </div>
+                    <div class="event-content">${event.content}</div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('afterbegin', html);
+            
+            // Keep only last 50 events in DOM
+            const events = container.querySelectorAll('.event');
+            events.forEach((e, i) => {
+                if (i >= 50) e.remove();
+            });
+        });
+        
+        loadAgents();
+        loadEvents();
+        
+        setInterval(loadEvents, 10000);
+    </script>
+</body>
+</html>

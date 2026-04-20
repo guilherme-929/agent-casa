@@ -1,6 +1,7 @@
 import { ILlmProvider } from '../types';
 import { GeminiProvider } from './GeminiProvider';
 import { OpenAiProvider } from './OpenAiProvider';
+import { OllamaProvider } from './OllamaProvider';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -21,6 +22,13 @@ export class ProviderFactory {
             case 'groq':
                 if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not defined');
                 return new OpenAiProvider(process.env.GROQ_API_KEY, 'https://api.groq.com/openai/v1', process.env.GROQ_MODEL || 'llama-3.3-70b-versatile');
+            
+            case 'ollama':
+                return new OllamaProvider(
+                    process.env.OLLAMA_API_KEY || 'ollama',
+                    process.env.OLLAMA_MODEL || 'qwen2.5',
+                    process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+                );
             
             default:
                 throw new Error(`Provider ${targetProvider} not supported`);

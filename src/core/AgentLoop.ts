@@ -1,6 +1,5 @@
 import { ILlmProvider, ChatMessage, ProviderResponse, ToolCall } from '../types';
 import { ToolRegistry } from '../tools/BaseTool';
-import { getMestreKamiPrompt } from './SystemPrompts';
 
 export class AgentLoop {
     private maxIterations = 10;
@@ -13,11 +12,11 @@ export class AgentLoop {
     public async run(messages: ChatMessage[], skillContent?: string): Promise<string> {
         let currentMessages = [...messages];
         
-        let systemPrompt = getMestreKamiPrompt();
+        let systemPrompt = `Você é um assistente helpful. Responda diretamente ao usuário.`;
 
-        // Inject skill content if present
+        // Inject skill content se presente (e substitui o default)
         if (skillContent) {
-            systemPrompt += `\n\n--- INSTRUÇÕES DA SKILL ESPECIALIZADA ATUAL ---\n${skillContent}`;
+            systemPrompt = skillContent;
         }
         
         currentMessages.unshift({

@@ -1,6 +1,7 @@
 import { Bot } from 'grammy';
 import { TelegramInputHandler } from './interfaces/TelegramInputHandler';
 import { NotificationService } from './services/NotificationService';
+import { startDashboard } from './dashboard/server';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -13,6 +14,9 @@ async function main() {
     const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
     const handler = new TelegramInputHandler(bot);
     const notifier = new NotificationService(bot);
+
+    // Start dashboard server
+    startDashboard().catch(err => console.log('[Dashboard] Could not start:', err.message));
 
     // Iniciar monitor de alertas
     notifier.start();
