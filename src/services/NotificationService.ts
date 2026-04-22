@@ -49,15 +49,19 @@ export class NotificationService {
                 if (task.status === 'Pendente') {
                     const taskDate = new Date(task.datetime);
                     const count = task.notificationCount || 0;
+                    const now = new Date();
                     
-                    // Lógica 1º Alerta (Horário Chegou)
-                    if (count === 0 && taskDate <= now) {
+                    // Skip future tasks
+                    if (taskDate > now) continue;
+                    
+                    // 1º Alerta (Horário Chegou)
+                    if (count === 0) {
                         await this.sendAlert(task, 1);
                         task.notificationCount = 1;
                         task.lastAlertAt = now.toISOString();
                         hasChanges = true;
                     } 
-                    // Lógica 2º Alerta (Reforço após 2 minutos)
+                    // 2º Alerta (Reforço após 2 minutos)
                     else if (count === 1 && task.lastAlertAt) {
                         const lastAlert = new Date(task.lastAlertAt);
                         const diffMinutes = (now.getTime() - lastAlert.getTime()) / 60000;
@@ -69,6 +73,7 @@ export class NotificationService {
                             hasChanges = true;
                         }
                     }
+                    // Stop alerting after count >= 2
                 }
             }
 

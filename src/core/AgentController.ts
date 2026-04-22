@@ -7,6 +7,7 @@ import { FileTool } from '../tools/FileTool';
 import { ReadFileTool } from '../tools/ReadFileTool';
 import { ShellTool } from '../tools/ShellTool';
 import { PdfParserTool } from '../tools/PdfParserTool';
+import { TaskTool } from '../tools/TaskTool';
 import { ChatMessage } from '../types';
 import { logMessage, logAgentSelected, logResponse } from '../dashboard/client';
 import dotenv from 'dotenv';
@@ -24,6 +25,7 @@ export class AgentController {
         this.toolRegistry.register(new ReadFileTool());
         this.toolRegistry.register(new ShellTool());
         this.toolRegistry.register(new PdfParserTool());
+        this.toolRegistry.register(new TaskTool());
     }
 
     private getDefaultProvider(): string {

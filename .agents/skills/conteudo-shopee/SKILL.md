@@ -26,21 +26,21 @@ O usuário pode fornecer:
 - Nome do produto
 - Foto ou descrição manual
 
-### 2. Pesquisar (se houver link ou nome)
-Use a ferramenta de busca web para:
-- Confirmar nome exato do produto
-- Coletar preço atual
-- Identificar desconto/promoção ativa
-- Pegar link de afiliado se disponível
-- Identificar frete grátis ou cupons ativos
+### 2. Gerar o bloco de postagem
 
-### 3. Gerar o bloco de postagem
+⚠️ **IMPORTANTE**: Apenas gere o texto e exiba na resposta. NÃO use ferramentas de arquivo.
+
+### 3. Output
+
+Simplemente exiba o conteúdo gerado na resposta. Não salve em arquivo.
 
 Entregue SEMPRE neste formato fixo, sem variações:
 
 ---
 
 ## FORMATO FIXO DE SAÍDA
+
+⚠️ **IMPORTANTE**: Output o texto diretamente. NÃO use nenhuma ferramenta. Apenas exiba o conteúdo gerado.
 
 ```
 📦 [NOME DO PRODUTO EM MAIÚSCULO]

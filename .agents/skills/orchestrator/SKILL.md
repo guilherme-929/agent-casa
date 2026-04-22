@@ -41,6 +41,10 @@ Leia a mensagem e escolha UM agente:
 | shopee, produto, venda, descrição, foto, marketing, anúncio, promoção, estoque, cliente | `conteudo-shopee` |
 | vídeo, roteiro, reels, tiktok, gravar, viral, hook, cena, legenda de vídeo | `video-shopee` |
 | preço, concorrente, magazine, amazon, mercado livre, comparar valor, pesquisar produto | `pesquisa-produto` |
+| extrair, produto, mensagem, dados, informações, nome, marca, preço, link | `produto-extractor` |
+| shopee, afiliado, link de compra, gerar-link, promote-link | `shopee-afiliados` |
+| telegram, enviar, grupo, mensagem promo, redistribuir | `telegram-sender` |
+| automatizar, fluxo completo, receber, processar, enviar para grupo | `fluxo-afiliado` |
 
 ---
 
