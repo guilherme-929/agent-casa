@@ -1,5 +1,8 @@
 import { SqliteRepository } from './SqliteRepository';
 import { v4 as uuidv4 } from 'uuid';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export interface Message {
     id: string;
@@ -11,6 +14,7 @@ export interface Message {
 
 export class MessageRepository {
     private db = SqliteRepository.getInstance();
+    private maxHistory = parseInt(process.env.OLLAMA_MAX_HISTORY || process.env.MEMORY_WINDOW_SIZE || '5');
 
     public addMessage(conversation_id: string, role: string, content: string): void {
         const id = uuidv4();
@@ -18,14 +22,15 @@ export class MessageRepository {
         stmt.run(id, conversation_id, role, content);
     }
 
-    public getHistory(conversation_id: string, limit: number = 20): Message[] {
+    public getHistory(conversation_id: string, limit: number = -1): Message[] {
+        const effectiveLimit = limit === -1 ? this.maxHistory : Math.min(limit, this.maxHistory);
         const stmt = this.db.prepare(`
             SELECT * FROM messages 
             WHERE conversation_id = ? 
             ORDER BY created_at DESC 
             LIMIT ?
         `);
-        const messages = stmt.all(conversation_id, Math.floor(limit)) as Message[];
+        const messages = stmt.all(conversation_id, effectiveLimit) as Message[];
         return messages.reverse();
     }
 

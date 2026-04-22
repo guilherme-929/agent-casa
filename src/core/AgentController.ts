@@ -1,7 +1,6 @@
 import { MemoryManager } from './MemoryManager';
 import { ProviderFactory } from './ProviderFactory';
 import { SkillLoader, Skill } from '../skills/SkillLoader';
-import { SkillRouter } from '../skills/SkillRouter';
 import { AgentLoop } from './AgentLoop';
 import { ToolRegistry } from '../tools/BaseTool';
 import { FileTool } from '../tools/FileTool';
@@ -64,20 +63,14 @@ export class AgentController {
         // 2. Load Skills
         const availableSkills = this.skillLoader.loadAll();
 
-        // 3. Select Provider for Routing
-        const routerProvider = ProviderFactory.create(provider);
-        const skillRouter = new SkillRouter(routerProvider);
-
-        // 4. Identify Skill
-        let skill = await skillRouter.route(text, availableSkills);
+        // 3. ALWAYS use Orchestrator first to decide which skill to use
+        let skill = availableSkills.find(s => s.metadata.id === 'orchestrator') || null;
         
-        // Se não identificar skill específica, usa o orchestrator como default
         if (!skill) {
-            skill = availableSkills.find(s => s.metadata.id === 'orchestrator') || null;
-            if (skill) {
-                console.log(`[AgentController] No specific skill identified. Using Orchestrator as default.`);
-            }
+            throw new Error('Orchestrator skill not found');
         }
+        
+        console.log(`[AgentController] Using Orchestrator to route request.`);
         
         if (skill) {
             console.log(`[AgentController] Skill identified: ${skill.metadata.name}`);
@@ -95,21 +88,34 @@ export class AgentController {
 
         // 6. Run main skill (sem o system prompt do orchestrator se for uma skill específica)
         let response: string;
+        let chainedSkill: string | null = null;
+        
         if (skill.metadata.id === 'orchestrator') {
             // Orchestrator usa seu próprio prompt
             const mainProvider = ProviderFactory.create(provider);
             const agentLoop = new AgentLoop(mainProvider, this.toolRegistry);
             response = await agentLoop.run(messages, skill.content);
+            
+            // Parse: identificar se o orchestrator indica qual agente chamar
+            // Formatos aceitos: "→video-shopee", "[video-shopee]", "→ goku", "[goku]"
+            // OU formato: "AGENTE: conteudo-shopee"
+            let delegateMatch = response.match(/(?:→|\[)\s*(\w+(?:-\w+)?)\s*(?:\]|)/i);
+            if (!delegateMatch) {
+                delegateMatch = response.match(/^AGENTE:\s*(\w+(?:-\w+)?)\s*$/m);
+            }
+            if (delegateMatch) {
+                chainedSkill = delegateMatch[1].toLowerCase();
+                console.log(`[AgentController] Orchestrator delegating to: ${chainedSkill}`);
+            }
         } else {
             // Outras skills usam only their content (não o orchestrator)
             const mainProvider = ProviderFactory.create(provider);
             const agentLoop = new AgentLoop(mainProvider, this.toolRegistry);
-            // Passa só o content da skill, sem o prompt do Orchestrator
             response = await agentLoop.run(messages, skill.content);
         }
 
-        // 8. CHAINING: After conteudo-shopee, automatically call video-shopee
-        if (skill.metadata.id === 'conteudo-shopee') {
+        // 7. CHAINING: After conteudo-shopee, automatically call video-shopee
+        if (skill.metadata.id === 'conteudo-shopee' || chainedSkill === 'video-shopee') {
             console.log(`[AgentController] Chaining: calling video-shopee`);
             
             try {
@@ -128,12 +134,41 @@ export class AgentController {
             }
         }
 
+        // 8. Delegate to other skill if orchestrator specified one
+        if (chainedSkill && chainedSkill !== 'video-shopee' && chainedSkill !== skill.metadata.id) {
+            console.log(`[AgentController] Delegating to: ${chainedSkill}`);
+            
+            try {
+                const delegateMessages: ChatMessage[] = [
+                    { role: 'user', content: text }
+                ];
+                
+                const delegateResult = await this.runSkill(text, chainedSkill, availableSkills, delegateMessages);
+                
+                response = delegateResult.response;
+                
+                await logAgentSelected(userId, username, text, chainedSkill).catch(() => {});
+            } catch (delegateError: any) {
+                console.error('[AgentController] Delegate error:', delegateError.message);
+            }
+        }
+
         // 9. Persist
         await this.memoryManager.saveMessage(conversation.id, 'user', text);
         await this.memoryManager.saveMessage(conversation.id, 'assistant', response);
 
         await logResponse(userId, username, response, skill?.metadata.name || 'unknown').catch(() => {});
 
-        return response;
+        const finalResponse = this.cleanResponse(response);
+        
+        return finalResponse;
+    }
+
+    private cleanResponse(response: string): string {
+        return response
+            .replace(/→\s*\w+(?:-\w+)?\s*$/gm, '')
+            .replace(/\[fim\]\s*$/gm, '')
+            .replace(/\n\s*[-−*]\s*(?:video-shopee|pesquisa-produto|goku|infra-n8n)\s*$/gim, '')
+            .trim();
     }
 }

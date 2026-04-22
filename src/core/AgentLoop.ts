@@ -1,13 +1,18 @@
 import { ILlmProvider, ChatMessage, ProviderResponse, ToolCall } from '../types';
 import { ToolRegistry } from '../tools/BaseTool';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class AgentLoop {
-    private maxIterations = 10;
+    private maxIterations = parseInt(process.env.OLLAMA_MAX_ITERATIONS || process.env.MAX_ITERATIONS || '3');
 
     constructor(
         private provider: ILlmProvider,
         private toolRegistry: ToolRegistry
-    ) {}
+    ) {
+        console.log(`[AgentLoop] Initialized with maxIterations=${this.maxIterations}`);
+    }
 
     public async run(messages: ChatMessage[], skillContent?: string): Promise<string> {
         let currentMessages = [...messages];

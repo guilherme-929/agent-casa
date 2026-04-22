@@ -50,12 +50,13 @@ export class TelegramInputHandler {
     }
 
     private setupHandlers(): void {
-        this.bot.use(async (ctx, next) => {
+this.bot.use(async (ctx, next) => {
             const userId = ctx.from?.id.toString();
             if (userId && this.allowedUserIds.includes(userId)) {
                 return next();
             }
             console.warn(`[TelegramInputHandler] Unauthorized access attempt from user ${userId}`);
+            return;
         });
 
         this.bot.on('message:text', async (ctx) => {
@@ -192,8 +193,7 @@ export class TelegramInputHandler {
             }
         });
 
-        // Handler para botões de concluir tarefa
-        this.bot.callbackQuery(/done:(.+)/, async (ctx) => {
+        this.bot.on('message:document', async (ctx) => {
             const taskId = ctx.match[1];
             const tasksPath = path.join(process.cwd(), 'tasks.json');
 
