@@ -1,0 +1,55 @@
+{
+  "name": "Shopee Affiliate Poster",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "url": "https://httpbin.org/redirect-to?url=https://shopee.com.br",
+        "sendBody": false,
+        "specifyBody": "json",
+        "bodyParameters": {
+          "parameters": []
+        },
+        "headerParameters": {
+          "parameters": []
+        },
+        "queryParameters": {
+          "parameters": []
+        }
+      },
+      "id": "http-resolve",
+      "name": "Resolve Link",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "to",
+        "channelId": "-2831072465",
+        "text": "📦 * produto *\n\n💰 * preço *\n\n🛒 [Compre aqui]( * link *)\n\n#shopee #ofertadodia"
+      },
+      "id": "telegram",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [450, 300],
+      "credentials": {
+        telegramApi": "telegram-bot"
+      }
+    }
+  ],
+  "connections": {
+    "Resolve Link": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

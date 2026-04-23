@@ -1,0 +1,303 @@
+{
+  "name": "Shopee Afiliado - Completo",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "1. Webhook - Recebe Link",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopee-afiliado",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "n2",
+      "name": "2. Extrai Dados do Produto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [450, 300],
+      "parameters": {
+        "operations": {
+          "duplicate": false
+        },
+        "assignments": {
+          "assignments": [
+            {
+              "id": "product_url",
+              "name": "product_url",
+              "value": "={{ $json.body.product_url || $json.query.product_url }}",
+              "type": "string"
+            },
+            {
+              "id": "affiliate_id",
+              "name": "affiliate_id",
+              "value": "=SEU_AFFILIATE_ID",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "name": "3. Gera Link Afiliado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 3.1,
+      "position": [650, 300],
+      "parameters": {
+        "jsCode": "// Gera link de afiliado usando método manual\nconst productUrl = $input.first().json.product_url;\nconst affiliateId = $input.first().json.affiliate_id;\n\nif (!productUrl) {\n  throw new Error('URL do produto não fornecida');\n}\n\n// Extrai nome do produto da URL ( formato: shopee.com.br/produto-name-i.12345678.987654321 )\nconst urlMatch = productUrl.match(/shopee\\.[a-z.]+\\/(.+?)-i\\.(\\d+)\\.(\\d+)/);\nconst productName = urlMatch ? urlMatch[1].replace(/-/g, ' ') : 'Produto Shopee';\n\n// Gera link de afiliado\nconst encodedUrl = encodeURIComponent(productUrl);\naffiliateLink = `https://s.shopee.com.br/an_redir?origin_link=${encodedUrl}&affiliate_id=${affiliateId}`;\n\nreturn {\n  ...$input.first().json,\n  product_name: productName,\n  affiliate_link: affiliateLink,\n  product_id: urlMatch ? urlMatch[2] : '',\n  shop_id: urlMatch ? urlMatch[3] : ''\n};",
+        "options": {}
+      }
+    },
+    {
+      "id": "n4",
+      "name": "4. Busca Preço (Opcional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300],
+      "parameters": {
+        "url": "={{ 'https://shopee.com.br/api/v4/product/get_item_detail?item_id=' + $json.product_id + '&shop_id=' + $json.shop_id }}",
+        "method": "GET",
+        "options": {}
+      }
+    },
+    {
+      "id": "n5",
+      "name": "5. Processa Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1050, 300],
+      "parameters": {
+        "operations": {
+          "duplicate": false
+        },
+        "assignments": {
+          "assignments": [
+            {
+              "id": "product_name",
+              "name": "product_name",
+              "value": "={{ $json.product_name }}",
+              "type": "string"
+            },
+            {
+              "id": "price",
+              "name": "price",
+              "value": "={{ $json.data?.item?.price ? ($json.data.item.price / 100000).toFixed(2) : 'Consulte' }}",
+              "type": "string"
+            },
+            {
+              "id": "rating",
+              "name": "rating",
+              "value": "={{ $json.data?.item?.rating_star || '0' }}",
+              "type": "string"
+            },
+            {
+              "id": "sold",
+              "name": "sold",
+              "value": "={{ $json.data?.item?.sold || '0' }}",
+              "type": "string"
+            },
+            {
+              "id": "image",
+              "name": "image",
+              "value": "={{ $json.data?.item?.image ? 'https://cf.shopee.com.br/file/' + $json.data.item.image : '' }}",
+              "type": "string"
+            },
+            {
+              "id": "affiliate_link",
+              "name": "affiliate_link",
+              "value": "={{ $json.affiliate_link }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "name": "6. Formata Mensagem",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1250, 300],
+      "parameters": {
+        "operations": {
+          "duplicate": false
+        },
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "value": "=🔥 *OFERTA IMPERDÍVEL*\n\n🛒 *Produto:* {{ $json.product_name }}\n\n💰 *Preço:* R$ {{ $json.price }}\n⭐ *Avaliação:* {{ $json.rating }}/5\n📦 *Vendidos:* {{ $json.sold }}\n\n🔗 *Compre aqui:* {{ $json.affiliate_link }}\n\n_💙 Use meu link para apoiar meu trabalho_",
+              "type": "string"
+            },
+            {
+              "id": "caption",
+              "name": "caption",
+              "value": "=🔥 OFERTA IMPERDÍVEL\n\n🛒 {{ $json.product_name }}\n💰 R$ {{ $json.price }}\n⭐ {{ $json.rating }}/5\n📦 {{ $json.sold }} vendidos",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "name": "7. Envia Telegram (Texto)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [1450, 300],
+      "parameters": {
+        "operation": "sendMessage",
+        "channelId": "-2831072465",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "n8",
+      "name": "8. Envia Foto (Opcional)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [1450, 450],
+      "parameters": {
+        "operation": "sendPhoto",
+        "channelId": "-2831072465",
+        "photo": "={{ $json.image }}",
+        "text": "={{ $json.caption }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "n9",
+      "name": "9. Erro - Link Inválido",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [850, 150],
+      "parameters": {
+        "operation": "sendMessage",
+        "channelId": "-2831072465",
+        "text": "❌ *Link inválido*\n\nO link enviado não é um produto válido da Shopee.\n\n📝 *Formato esperado:*\n`https://shopee.com.br/nome-produto-i.123456.789012`",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "name": "10. Erro - API",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [1250, 150],
+      "parameters": {
+        "operation": "sendMessage",
+        "channelId": "-2831072465",
+        "text": "⚠️ *Erro ao processar produto*\n\nNão foi possível buscar os dados deste produto. Tente novamente mais tarde.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "n11",
+      "name": "11. Sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1650, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"success\", \"message\": \"Produto publicado com sucesso!\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "n12",
+      "name": "12. Resposta Erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1050, 150],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\": \"error\", \"message\": \"Link inválido\"}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "1. Webhook - Recebe Link": {
+      "main": [
+        [
+          {"node": "2. Extrai Dados do Produto", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "2. Extrai Dados do Produto": {
+      "main": [
+        [
+          {"node": "3. Gera Link Afiliado", "type": "main", "index": 0},
+          {"node": "9. Erro - Link Inválido", "type": "main", "index": 0},
+          {"node": "12. Resposta Erro", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "3. Gera Link Afiliado": {
+      "main": [
+        [
+          {"node": "4. Busca Preço (Opcional)", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "4. Busca Preço (Opcional)": {
+      "main": [
+        [
+          {"node": "5. Processa Dados", "type": "main", "index": 0}
+        ]
+      ],
+      "error": [
+        [
+          {"node": "10. Erro - API", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "5. Processa Dados": {
+      "main": [
+        [
+          {"node": "6. Formata Mensagem", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "6. Formata Mensagem": {
+      "main": [
+        [
+          {"node": "7. Envia Telegram (Texto)", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "7. Envia Telegram (Texto)": {
+      "main": [
+        [
+          {"node": "11. Sucesso", "type": "main", "index": 0},
+          {"node": "8. Envia Foto (Opcional)", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "9. Erro - Link Inválido": {
+      "main": [
+        [
+          {"node": "12. Resposta Erro", "type": "main", "index": 0}
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v2"
+  }
+}

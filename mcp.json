@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": ["-y", "n8n-mcp@latest"],
+      "env": {
+        "N8N_API_URL": "https://n8n.alemnet.net.br",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMGE2OWM4OS1kNWVkLTQwYTItOGM0Ny04NTExY2MzNGI3MTkiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzc1NzY1MTUzLCJleHAiOjE3NzgyOTU2MDB9.Jb18qj_d39LOT_87kgOFOB7YHYbvq4Iw5-5_1lZMpnQ"
+      }
+    }
+  }
+}

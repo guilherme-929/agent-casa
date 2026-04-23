@@ -1,0 +1,39 @@
+{
+  "name": "Shopee Bot - Simple",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "id": "n2", 
+      "name": "HTTP - Shopee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "parameters": {
+        "url": "https://shopee.com.br/api/v4/search_product_variant/search_item/v2?keyword={{ $json.keywords }}&limit=1",
+        "method": "GET"
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [650, 300],
+      "parameters": {
+        "operation": "to",
+        "channelId": "-2831072465",
+        "text": "🔍 Resultado: {{ $json.data.items[0].name }}\n\n💰 Preço: R$ {{ ($json.data.items[0].price / 100000).toFixed(2) }}\n\n🔗 https://shopee.com.br{{ $json.data.items[0].link }}"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {"main": [[{"node": "HTTP - Shopee", "type": "main", "index": 0}]]},
+    "HTTP - Shopee": {"main": [[{"node": "Telegram", "type": "main", "index": 0}]]}
+  }
+}

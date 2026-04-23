@@ -1,0 +1,169 @@
+{
+  "name": "Shopee Affiliate Poster",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "error": true,
+          "errorMessage": "Digite uma palavra-chave",
+          "errors": ""
+        },
+        "includeOtherFields": true,
+        "properties": {
+          "parameters": [
+            {
+              "name": "keywords",
+              "value": "={{ $json.keywords }}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "manual-trigger",
+      "name": "Buscar Produto",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "webhookId": ""
+    },
+    {
+      "parameters": {
+        "url": "https://shopee.com.br/api/v4/search_product_variant/search_item/v2?keyword={{ $json.keywords }}&limit=5",
+        "sendBody": false,
+        "specifyBody": "json",
+        "bodyParameters": {
+          "parameters": []
+        },
+        "headerParameters": {
+          "parameters": []
+        },
+        "queryParameters": {
+          "parameters": []
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-request",
+      "name": "Buscar na Shopee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "includeOtherFields": true,
+        "duplicateItem": true,
+        "options": {}
+      },
+      "id": "split-in-batches",
+      "name": "Loop Produtos",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst affiliateId = $env.SHOPEE_AFFILIATE_ID || '';\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const name = data.name || 'Sem nome';\n  const price = data.price ? (data.price / 100000).toFixed(2) : 'N/A';\n  const image = data.image ? 'https://cf.shopee.com.br/' + data.image : '';\n  const link = 'https://shopee.com.br/' + data.link;\n  const affiliateLink = affiliateId ? link + '?p=' + affiliateId : link;\n  \n  results.push({    \n    json: {\n      name,\n      price,\n      image,\n      link: affiliateLink\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "code-process",
+      "name": "Processar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 3,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst affiliateId = $env.SHOPEE_AFFILIATE_ID || '';\n\nconst message = `📦 *${item.name}*\n\n💰 Preço: R$ ${item.price}\n\n🛒 [Compre aqui](${item.link})\n\n#shopee #ofertadodia`;\n\nreturn [{ json: { message } }];"
+      },
+      "id": "code-format",
+      "name": "Formatar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 3,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "to",
+        "channelId": "-2831072465",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram",
+      "name": "Enviar Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [1250, 300],
+      "credentials": {
+        "telegramApi": "telegram-bot"
+      }
+    }
+  ],
+  "connections": {
+    "Buscar Produto": {
+      "main": [
+        [
+          {
+            "node": "Buscar na Shopee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar na Shopee": {
+      "main": [
+        [
+          {
+            "node": "Loop Produtos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Produtos": {
+      "main": [
+        [
+          {
+            "node": "Processar Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Dados": {
+      "main": [
+        [
+          {
+            "node": "Formatar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Enviar Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["shopee", "afiliado", "telegram"],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-23T12:00:00.000Z",
+  "activationMode": "manual"
+}

@@ -1,0 +1,152 @@
+{
+  "name": "Shopee Afiliado - Bot",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 1}]
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Keywords",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [450, 300],
+      "parameters": {
+        "operations": {
+          "duplicate": false,
+          "includeOtherFields": true
+        },
+        "assignments": {
+          "assignments": [
+            {
+              "id": "keywords",
+              "name": "keywords",
+              "value": "fone bluetooth",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "name": "Search Shopee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300],
+      "parameters": {
+        "url": "https://shopee.com.br/api/v4/search_product_variant/search_item/v2?keyword={{ $json.keywords }}&limit=5",
+        "method": "GET",
+        "options": {}
+      }
+    },
+    {
+      "id": "n4",
+      "name": "Process Items",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [850, 300],
+      "parameters": {
+        "operations": {
+          "duplicate": false,
+          "includeOtherFields": false
+        },
+        "assignments": {
+          "assignments": [
+            {
+              "id": "name",
+              "name": "name",
+              "value": "{{ $json.item.name }}",
+              "type": "string"
+            },
+            {
+              "id": "price",
+              "name": "price",
+              "value": "{{ ($json.item.price / 100000).toFixed(2) }}",
+              "type": "string"
+            },
+            {
+              "id": "image",
+              "name": "image",
+              "value": "https://cf.shopee.com.br/file/{{ $json.item.image }}",
+              "type": "string"
+            },
+            {
+              "id": "rating",
+              "name": "rating",
+              "value": "{{ $json.item.rating }}",
+              "type": "string"
+            },
+            {
+              "id": "sold",
+              "name": "sold",
+              "value": "{{ $json.item.sold }}",
+              "type": "string"
+            },
+            {
+              "id": "product_url",
+              "name": "product_url",
+              "value": "https://shopee.com.br{{ $json.item.link }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "name": "Generate Affiliate Link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 3.1,
+      "position": [1050, 300],
+      "parameters": {
+        "jsCode": "constaffiliateId = 'SUA_AFFILIATE_ID_AQUI';\nconst encodedUrl = encodeURIComponent($input.first().json.product_url);\nconst shortLink = `https://s.shopee.com.br/an_redir?origin_link=${encodedUrl}&affiliate_id=${affiliateId}`;\n\nreturn {\n  ...$input.first().json,\n  affiliate_link: shortLink\n};",
+        "options": {}
+      }
+    },
+    {
+      "id": "n6",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [1250, 300],
+      "parameters": {
+        "operation": "sendMessage",
+        "channelId": "-2831072465",
+        "text": "🔍 *{{ $json.name }}*\n\n💰 Preço: R$ {{ $json.price }}\n⭐ Avaliação: {{ $json.rating }}\n📦 Vendidos: {{ $json.sold }}\n\n🛒 Compre com link de afiliado:\n{{ $json.affiliate_link }}\n\n_Use o link acima para apoiar meu trabalho_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1450, 300],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {"main": [[{"node": "Keywords", "type": "main", "index": 0}]]},
+    "Keywords": {"main": [[{"node": "Search Shopee", "type": "main", "index": 0}]]},
+    "Search Shopee": {"main": [[{"node": "Process Items", "type": "main", "index": 0}]]},
+    "Process Items": {"main": [[{"node": "Generate Affiliate Link", "type": "main", "index": 0}]]},
+    "Generate Affiliate Link": {"main": [[{"node": "Telegram", "type": "main", "index": 0}]]},
+    "Telegram": {"main": [[{"node": "Wait", "type": "main", "index": 0}]]},
+    "Wait": {"main": [[{"node": "Process Items", "type": "main", "index": 0}]]}
+  },
+  "settings": {}
+}

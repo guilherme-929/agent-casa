@@ -1,0 +1,106 @@
+{
+  "name": "Shopee → Instagram/Telegram - Afiliado",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Receber Palavra-chave",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 380],
+      "parameters": {
+        "rule": {"error": true, "errorMessage": "Digite a palavra-chave", "errors": ""},
+        "includeOtherFields": true,
+        "properties": {
+          "parameters": [
+            {"name": "keywords", "value": "={{ $json.keywords }}", "type": "string"}
+          ]
+        }
+      }
+    },
+    {
+      "id": "http",
+      "name": "Buscar na Shopee",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 380],
+      "parameters": {
+        "url": "https://shopee.com.br/api/v4/search_product_variant/search_item/v2?keyword={{ $json.keywords }}&limit=10",
+        "sendBody": false,
+        "specifyBody": "json",
+        "options": {"timeout": 30000}
+      }
+    },
+    {
+      "id": "split",
+      "name": "Loop Produtos",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [620, 380],
+      "parameters": {"includeOtherFields": true, "duplicateItem": true}
+    },
+    {
+      "id": "code",
+      "name": "Processar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 3,
+      "position": [820, 380],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst affiliateId = $env.SHOPEE_AFFILIATE_ID || '';\n\nconst name = item.name || 'Produto';\nconst price = item.price ? (item.price / 100000).toFixed(2) : '0';\nconst originalPrice = item.original_price ? (item.original_price / 100000).toFixed(2) : null;\nconst image = item.image ? 'https://cf.shopee.com.br/' + item.image : '';\nconst link = 'https://shopee.com.br/' + item.link;\nconst affiliateLink = affiliateId ? link + '?p=' + affiliateId : link;\n\nconst discount = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;\n\nconst message = '📦 ' + name.toUpperCase() + '\\n\\n' +\n  '✅ Benefício 1\\n' +\n  '✅ Benefício 2\\n' +\n  '✅ Benefício 3\\n' +\n  (discount > 0 ? '\\n🔥 ' + discount + '% OFF\\n' : '\\n\\n') +\n  '💰 De: R$ ' + (originalPrice || price) + '\\n' +\n  '🎁 Por: R$ ' + price + '\\n\\n' +\n  '🛒 [COMPRE AQUI](' + affiliateLink + ')\\n\\n' +\n  '#shopee #afiliado #oferta';\n\nreturn [{json: {\n  name, \n  price, \n  originalPrice, \n  image, \n  link: affiliateLink, \n  discount,\n  message\n}}];"
+      }
+    },
+    {
+      "id": "telegram",
+      "name": "Enviar Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.5,
+      "position": [1020, 200],
+      "parameters": {
+        "operation": "to",
+        "channelId": "-2831072465",
+        "text": "={{ $json.message }}",
+        "additionalFields": {"parse_mode": "Markdown"}
+      },
+      "credentials": {"telegramApi": {"id": "telegram-bot", "name": "Telegram Bot"}}
+    },
+    {
+      "id": "delay",
+      "name": "Aguardar",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.2,
+      "position": [1020, 500],
+      "parameters": {"amount": 2, "unit": "seconds"}
+    },
+    {
+      "id": "continue",
+      "name": "Continuar Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 2,
+      "position": [1220, 380]
+    }
+  ],
+  "connections": {
+    "Receber Palavra-chave": {
+      "main": [[{"node": "Buscar na Shopee", "type": "main", "index": 0}]]
+    },
+    "Buscar na Shopee": {
+      "main": [[{"node": "Loop Produtos", "type": "main", "index": 0}]]
+    },
+    "Loop Produtos": {
+      "main": [[{"node": "Processar Dados", "type": "main", "index": 0}]]
+    },
+    "Processar Dados": {
+      "main": [
+        [{"node": "Enviar Telegram", "type": "main", "index": 0}],
+        [{"node": "Aguardar", "type": "main", "index": 0}]
+      ]
+    },
+    "Aguardar": {
+      "main": [[{"node": "Continuar Loop", "type": "main", "index": 0}]]
+    },
+    "Continuar Loop": {
+      "main": [[{"node": "Loop Produtos", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {"executionOrder": "v1"},
+  "tags": ["shopee", "afiliado", "telegram", "instagram"]
+}
